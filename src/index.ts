@@ -1,7 +1,7 @@
-function test(str: string) {
-  return `i am a ${str}`
+export function test(str: string): string {
+  return `i am a ${str}`;
 }
 
-const data = test('zzc')
+const data = test('zzc');
 
-console.log(data)
+console.log(data);
