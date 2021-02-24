@@ -1,56 +1,74 @@
 const path = require('path');
-const babel = require('rollup-plugin-babel');
+const { babel } = require('@rollup/plugin-babel');
 const { nodeResolve } = require('@rollup/plugin-node-resolve');
-const uglify = require('rollup-plugin-uglify').uglify;
+const commonjs = require('@rollup/plugin-commonjs');
+const { terser } = require('rollup-plugin-terser');
 const merge = require('lodash.merge');
+const typescript = require('rollup-plugin-typescript2');
+const babelConfig = require('./babel.config');
 const pkg = require('./package.json');
 
 const extensions = ['.js', '.ts'];
+const moduleName = 'ZOssImage';
 
 const resolve = function (...args) {
-  return path.resolve(__dirname, ...args);
+  return path.resolve(process.cwd(), ...args);
 };
 
 // 打包任务的个性化配置
 const jobs = {
-  esm: {
+  es: {
     output: {
-      format: 'esm',
-      file: resolve(pkg.module),
+      format: 'es',
+      file: resolve(pkg.main),
+      plugins: [],
     },
   },
   umd: {
     output: {
       format: 'umd',
-      file: resolve(pkg.main),
-      name: 'rem',
+      file: resolve(pkg.module),
+      name: moduleName,
+      plugins: [],
     },
   },
   min: {
     output: {
       format: 'umd',
       file: resolve(pkg.main.replace(/(.\w+)$/, '.min$1')),
-      name: 'rem',
+      name: moduleName,
     },
-    plugins: [uglify()],
+    plugins: [terser()],
   },
 };
 
 // 从环境变量获取打包特征
 const mergeConfig = jobs[process.env.FORMAT || 'esm'];
-
+const resolveOptions = {
+  extensions,
+  modulesOnly: !process.env.FORMAT === 'min',
+};
+// const typescriptOptions =
+//   process.env.FORMAT === 'min'
+//     ? {
+//         module: 'commonjs',
+//       }
+//     : {};
 module.exports = merge(
   {
     input: resolve('./src/index.ts'),
-    output: {},
     plugins: [
-      nodeResolve({
-        extensions,
-        modulesOnly: true,
+      typescript({
+        useTsconfigDeclarationDir: true,
+        sourceMap: false,
       }),
+      nodeResolve(resolveOptions),
+      commonjs({ extensions }),
       babel({
         exclude: 'node_modules/**',
         extensions,
+        ...babelConfig,
+        plugins: ['transform-class-properties'],
       }),
     ],
   },
